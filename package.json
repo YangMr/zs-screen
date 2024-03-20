@@ -12,8 +12,10 @@
   },
   "dependencies": {
     "axios": "^1.6.8",
+    "echarts": "^5.5.0",
     "js-cookie": "^3.0.5",
     "pinia": "^2.1.7",
+    "v-scale-screen": "^2.2.0",
     "vue": "^3.4.15",
     "vue-router": "^4.2.5"
   },

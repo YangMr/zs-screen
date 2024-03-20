@@ -23,7 +23,9 @@ request.interceptors.request.use(
 
 request.interceptors.response.use(
   (response) => {
-    return response
+    if (response.status === 200 && response.data.code === 10000) {
+      return response.data
+    }
   },
   (error) => {
     return Promise.reject(error)

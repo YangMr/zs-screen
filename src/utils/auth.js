@@ -1,7 +1,6 @@
 import Cookies from 'js-cookie'
 // token常量
-const TOKEN_KEY = 'token'
-
+const TOKEN_KEY = 'vue_admin_template_token'
 
 // 读取cookie
 export const getCookie = () => {
