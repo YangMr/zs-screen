@@ -1,146 +1,114 @@
 <script setup>
-import { getParkInfoApi } from '@/api/park.js'
-import { onMounted, ref } from 'vue'
-import * as echarts from 'echarts'
+import { computed, onMounted, ref } from 'vue'
 import VScaleScreen from 'v-scale-screen'
+import { Application } from '@splinetool/runtime'
+import { useInitBarChart, useInitPieChart, useParkInfo } from './composables'
+import LoadingComponent from '@/components/LoadingComponent.vue'
+import { getAreaInfoApi, getBuildingInfoApi } from '@/api/park.js'
 
-// 初始化一个变量,保存请求到的园区数据
-const parkInfo = ref({})
+const { parkInfo, getParkInfo } = useParkInfo()
+const { initBarChart } = useInitBarChart(parkInfo)
+const { initPieChart } = useInitPieChart(parkInfo)
 
-// 获取园区数据
-const getParkInfo = async () => {
+const ref3d = ref(null)
+const loadStatus = ref(false)
+const showModel = ref(false)
+let x = ref()
+let y = ref()
+const buildingInfo = ref()
+const areaInfo = ref()
+
+const init3dModel = () => {
+  loadStatus.value = true
+  // 实例化模型加载器以及指定渲染的dom
+  const spline = new Application(ref3d.value)
+  spline.load('https://fe-hmzs.itheima.net/scene.splinecode').then(() => {
+    // spline.load('https://prod.spline.design/Dy3Uu9f0y9ebdsLT/scene.splinecode').then(() => {
+    // 模型加载成功之后会触发.then 方法
+    console.log('模型加载成功')
+    loadStatus.value = false
+
+    spline.addEventListener('mouseDown', (e) => {
+      x.value = ''
+      y.value = ''
+      // 坐标 没有
+      console.log('e', e)
+      // {name : '' , id : ''}
+      const params = e.target
+
+      // const obj = spline.findObjectByName(params.name)
+
+      console.log('obj', params)
+      if (params.name.indexOf('办公楼') !== -1) {
+        console.log('楼宇')
+        console.log('--->', params.id)
+        getBuildingInfo(params.id)
+        window.addEventListener('mousedown', (e) => {
+          x.value = e.offsetX
+          y.value = e.offsetY
+        })
+      } else if (params.name.indexOf('停车场') !== -1) {
+        console.log('停车场')
+        getAreaInfo(params.id)
+        x.value = posi.value.x
+        y.value = posi.value.y
+        window.addEventListener('mousedown', (e) => {
+          x.value = e.offsetX
+          y.value = e.offsetY
+        })
+      }
+      showModel.value = true
+    })
+  })
+}
+
+const getBuildingInfo = async (id) => {
   try {
-    const res = await getParkInfoApi()
-    parkInfo.value = res.data
+    const res = await getBuildingInfoApi(id)
+    console.log('res', res)
+    buildingInfo.value = res.data
   } catch (e) {
     console.log(e)
   }
 }
 
-// 1. 安装并引入E charts  2. 创建渲染的画布 3. 实例化echarts 4. 设置配置项 5. 渲染配置项  6. 自适应
-
-// 渲染年度收入分析图表
-
-const initBarChart = () => {
-  const { parkIncome } = parkInfo.value
-  const option = {
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'shadow'
-      }
-    },
-    grid: {
-      left: '0',
-      top: '10px',
-      bottom: '0',
-      right: '0',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: parkIncome?.xMonth
-    },
-    yAxis: {
-      type: 'value'
-    },
-    series: [
-      {
-        barWidth: '10px',
-        data: parkIncome?.yIncome.map((item, index) => {
-          let color = ''
-          if (index % 2 === 0) {
-            color = new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0.23, color: '#74c0f8' },
-              { offset: 1, color: 'rgba(116,192,248,0.00)' }
-            ])
-          } else {
-            color = new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0.23, color: '#ff7152' },
-              { offset: 1, color: 'rgba(255,113,82,0.00)' }
-            ])
-          }
-          return {
-            value: item,
-            itemStyle: {
-              color: color
-            }
-          }
-        }),
-
-        type: 'bar'
-      }
-    ],
-    textStyle: {
-      color: '#B4C0CC'
-    }
+const getAreaInfo = async (id) => {
+  try {
+    const res = await getAreaInfoApi(id)
+    console.log('area', res)
+    areaInfo.value = res.data
+  } catch (e) {
+    console.log(e)
   }
-  // const barChart = ref(null)
-  const myChart = echarts.init(document.getElementById('barChart'))
-  option && myChart.setOption(option)
-}
-
-const initPieChart = () => {
-  const { parkIndustry } = parkInfo.value
-
-  const option = {
-    color: ['#00B2FF', '#2CF2FF', '#892CFF', '#FF624D', '#FFCF54', '#86ECA2'],
-    tooltip: {
-      trigger: 'item'
-    },
-    legend: {
-      // top: '5%',
-      left: 'center',
-      bottom: '0',
-      icon: 'rect',
-      itemWidth: 10,
-      itemHeight: 10,
-      textStyle: {
-        color: '#c6d1db'
-      }
-    },
-    series: [
-      {
-        name: '园区产业分析',
-        type: 'pie',
-        radius: ['55%', '60%'],
-        avoidLabelOverlap: false,
-        center: ['50%', '40%'],
-        label: {
-          show: false,
-          position: 'center'
-        },
-        tooltip: {
-          trigger: 'item',
-          formatter: function (params) {
-            return `${params.seriesName} <br/>${params.marker}  ${params.name} ${params.percent}%`
-          }
-        },
-        emphasis: {
-          label: {
-            show: false,
-            fontSize: 40,
-            fontWeight: 'bold'
-          }
-        },
-        labelLine: {
-          show: false
-        },
-        data: parkIndustry
-      }
-    ]
-  }
-
-  const myChart = echarts.init(document.getElementById('pieChart'))
-
-  option && myChart.setOption(option)
 }
 
 onMounted(async () => {
   await getParkInfo()
   initBarChart()
   initPieChart()
+  init3dModel()
 })
+
+const modelStatus = computed(() => {
+  if (x.value && y.value) {
+    return true
+  } else {
+    return false
+  }
+})
+
+const close = () => {
+  x.value = ''
+  y.value = ''
+
+  console.log(x.value, y.value)
+}
+
+/**
+ * 1. 优化鼠标点击然后盒子显示的位置 已解决
+ * 2. 判断当前点击的楼宇还是停车场
+ * 3. 调用接口获取数据,并进行渲染
+ */
 </script>
 
 <template>
@@ -206,6 +174,20 @@ onMounted(async () => {
           src="https://yjy-teach-oss.oss-cn-beijing.aliyuncs.com/smartPark/%E5%A4%A7%E5%B1%8F%E5%88%87%E5%9B%BE/%E5%9B%AD%E5%8C%BA%E4%BA%A7%E4%B8%9A%E5%88%86%E5%B8%83%402x.png"
         />
         <div id="pieChart" class="pie-chart">123</div>
+      </div>
+    </div>
+    <div class="model-container">
+      <LoadingComponent :loading="loadStatus"></LoadingComponent>
+      <canvas ref="ref3d" class="canvas-3d"></canvas>
+      <div
+        v-if="modelStatus"
+        id="t"
+        :class="{ animate__zoomIn: modelStatus }"
+        :style="{ left: x + 'px', top: y + 'px' }"
+        class="tip animate__animated"
+      >
+        <span class="close" @mousedown.stop="close"></span>
+        <div class="header">{{ buildingInfo.name }}</div>
       </div>
     </div>
   </VScaleScreen>
@@ -334,6 +316,35 @@ onMounted(async () => {
       margin: 0 auto;
       padding-bottom: 20px;
       width: 80%;
+    }
+  }
+}
+
+.model-container {
+  width: 100%;
+  height: 100%;
+  background: black;
+
+  .tip {
+    width: 281px;
+    height: 140px;
+    background: url('@/assets/modal-bg.png') no-repeat;
+    background-size: cover;
+    color: #fff;
+    //display: none;
+    position: absolute;
+    //left: 0;
+    //top: 0;
+
+    .close {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      width: 20px;
+      height: 20px;
+      background: url('@/assets/modal-close.png') no-repeat;
+      background-size: cover;
+      cursor: pointer;
     }
   }
 }
